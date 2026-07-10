@@ -53,7 +53,7 @@ final class JsonInvoiceParser implements InvoiceFileParserInterface
         }
 
         $date = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $row['date']);
-        if (false === $date) {
+        if (false === $date || $date->format('Y-m-d') !== $row['date']) {
             throw new InvoiceImportException(sprintf('Invalid date "%s" at index %s in "%s".', $row['date'], $index, $filePath));
         }
 

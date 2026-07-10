@@ -53,6 +53,14 @@ final class JsonInvoiceParserTest extends TestCase
         iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/missing-key.json'));
     }
 
+    public function testParseRejectsImpossibleDate(): void
+    {
+        $this->expectException(InvoiceImportException::class);
+        $this->expectExceptionMessageMatches('/Invalid date "2025-02-30" at index 0/');
+
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/bad-date.json'));
+    }
+
     public function testParseRejectsUnreadableFile(): void
     {
         $this->expectException(InvoiceImportException::class);

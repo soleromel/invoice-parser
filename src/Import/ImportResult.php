@@ -25,6 +25,18 @@ final class ImportResult
         return false;
     }
 
+    public function failureCount(): int
+    {
+        $failures = 0;
+        foreach ($this->files as $file) {
+            if ($file->isFailure()) {
+                ++$failures;
+            }
+        }
+
+        return $failures;
+    }
+
     public function totalImported(): int
     {
         $total = 0;

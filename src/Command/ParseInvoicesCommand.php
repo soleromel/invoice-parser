@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Service\InvoiceParser;
+use App\Import\InvoiceImporter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -22,7 +22,7 @@ final class ParseInvoicesCommand extends Command
     private const DEFAULT_PATH = 'data';
 
     public function __construct(
-        private readonly InvoiceParser $parser,
+        private readonly InvoiceImporter $importer,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {
@@ -64,12 +64,25 @@ final class ParseInvoicesCommand extends Command
             return Command::SUCCESS;
         }
 
-        foreach ($files as $file) {
-            $this->parser->parse($file);
-            $io->writeln(sprintf('Parsed <info>%s</info>', $file));
+        $result = $this->importer->import($files);
+
+        foreach ($result->files as $file) {
+            if ($file->isFailure()) {
+                $io->writeln(sprintf('<error>✗</error> %s — %s', $file->filePath, $file->error));
+
+                continue;
+            }
+
+            $io->writeln(sprintf('<info>✓</info> %s — %d invoice(s) imported', $file->filePath, $file->importedCount));
         }
 
-        $io->success(sprintf('%d file(s) processed.', count($files)));
+        if ($result->hasFailures()) {
+            $io->error(sprintf('%d file(s) failed, %d invoice(s) imported.', $result->failureCount(), $result->totalImported()));
+
+            return Command::FAILURE;
+        }
+
+        $io->success(sprintf('%d invoice(s) imported from %d file(s).', $result->totalImported(), count($files)));
 
         return Command::SUCCESS;
     }

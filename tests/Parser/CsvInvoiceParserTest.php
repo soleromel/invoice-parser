@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Parser;
 
+use App\Entity\Currency;
 use App\Exception\InvoiceImportException;
 use App\Parser\CsvInvoiceParser;
 use PHPUnit\Framework\TestCase;
@@ -30,11 +31,19 @@ final class CsvInvoiceParserTest extends TestCase
         $invoices = iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/invoices.csv'), false);
 
         self::assertCount(2, $invoices);
-        self::assertSame(670.43, $invoices[0]->amount);
-        self::assertSame('EUR', $invoices[0]->currency);
+        self::assertSame(67043, $invoices[0]->amount->minorUnits);
+        self::assertSame(Currency::EUR, $invoices[0]->amount->currency);
         self::assertSame('Frank Green', $invoices[0]->customerName);
         self::assertSame('2025-02-03', $invoices[0]->date->format('Y-m-d'));
         self::assertSame("Jane O'Brien", $invoices[1]->customerName);
+    }
+
+    public function testParseRejectsUnknownCurrency(): void
+    {
+        $this->expectException(InvoiceImportException::class);
+        $this->expectExceptionMessageMatches('/Unknown currency "XXX" at line 1/');
+
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/unknown-currency.csv'), false);
     }
 
     public function testParseYieldsNothingForEmptyFile(): void

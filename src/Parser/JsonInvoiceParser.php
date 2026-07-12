@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Parser;
 
 use App\Dto\InvoiceData;
+use App\Entity\Currency;
+use App\Entity\Money;
 use App\Exception\InvoiceImportException;
 
 final class JsonInvoiceParser implements InvoiceFileParserInterface
@@ -48,8 +50,15 @@ final class JsonInvoiceParser implements InvoiceFileParserInterface
             }
         }
 
-        if (!is_numeric($row['montant'])) {
-            throw new InvoiceImportException(sprintf('Invalid amount "%s" at index %s in "%s".', $row['montant'], $index, $filePath));
+        $currency = Currency::tryFrom((string) $row['devise']);
+        if (null === $currency) {
+            throw new InvoiceImportException(sprintf('Unknown currency "%s" at index %s in "%s".', $row['devise'], $index, $filePath));
+        }
+
+        try {
+            $amount = Money::fromDecimalString((string) $row['montant'], $currency);
+        } catch (\InvalidArgumentException $e) {
+            throw new InvoiceImportException(sprintf('Invalid amount "%s" at index %s in "%s": %s', $row['montant'], $index, $filePath, $e->getMessage()), previous: $e);
         }
 
         $date = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $row['date']);
@@ -58,8 +67,7 @@ final class JsonInvoiceParser implements InvoiceFileParserInterface
         }
 
         return new InvoiceData(
-            amount: (float) $row['montant'],
-            currency: (string) $row['devise'],
+            amount: $amount,
             customerName: (string) $row['nom'],
             date: $date,
         );

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Parser;
 
 use App\Dto\InvoiceData;
+use App\Entity\Currency;
+use App\Entity\Money;
 use App\Exception\InvoiceImportException;
 
 final class CsvInvoiceParser implements InvoiceFileParserInterface
@@ -44,8 +46,15 @@ final class CsvInvoiceParser implements InvoiceFileParserInterface
 
         [$amount, $currency, $customerName, $date] = $row;
 
-        if (!is_numeric($amount)) {
-            throw new InvoiceImportException(sprintf('Invalid amount "%s" at line %d in "%s".', $amount, $line, $filePath));
+        $parsedCurrency = Currency::tryFrom((string) $currency);
+        if (null === $parsedCurrency) {
+            throw new InvoiceImportException(sprintf('Unknown currency "%s" at line %d in "%s".', $currency, $line, $filePath));
+        }
+
+        try {
+            $parsedAmount = Money::fromDecimalString((string) $amount, $parsedCurrency);
+        } catch (\InvalidArgumentException $e) {
+            throw new InvoiceImportException(sprintf('Invalid amount "%s" at line %d in "%s": %s', $amount, $line, $filePath, $e->getMessage()), previous: $e);
         }
 
         $parsedDate = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $date);
@@ -54,8 +63,7 @@ final class CsvInvoiceParser implements InvoiceFileParserInterface
         }
 
         return new InvoiceData(
-            amount: (float) $amount,
-            currency: (string) $currency,
+            amount: $parsedAmount,
             customerName: (string) $customerName,
             date: $parsedDate,
         );

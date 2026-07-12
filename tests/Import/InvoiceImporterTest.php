@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Import;
 
 use App\Dto\InvoiceData;
+use App\Entity\Currency;
+use App\Entity\Invoice;
+use App\Entity\Money;
 use App\Exception\InvoiceImportException;
 use App\Import\InvoiceImporter;
 use App\Parser\InvoiceFileParserInterface;
@@ -26,6 +29,23 @@ final class InvoiceImporterTest extends TestCase
         self::assertSame(3, $result->totalImported());
         self::assertSame(2, $result->files[0]->importedCount);
         self::assertSame(1, $result->files[1]->importedCount);
+    }
+
+    public function testImportMapsDataToEntities(): void
+    {
+        $saved = [];
+        $importer = new InvoiceImporter([
+            $this->parserYielding('json', [$this->invoice('John Doe')]),
+        ], $this->countingRepository($saved));
+
+        $importer->import(['a.json']);
+
+        self::assertCount(1, $saved);
+        self::assertInstanceOf(Invoice::class, $saved[0]);
+        self::assertSame('John Doe', $saved[0]->getName());
+        self::assertSame(10000, $saved[0]->getAmount()->minorUnits);
+        self::assertSame(Currency::EUR, $saved[0]->getAmount()->currency);
+        self::assertSame('2025-02-03', $saved[0]->getDate()->format('Y-m-d'));
     }
 
     public function testUnsupportedFileDoesNotBlockOthers(): void
@@ -69,17 +89,21 @@ final class InvoiceImporterTest extends TestCase
         self::assertSame([], $result->files);
     }
 
-    private function countingRepository(): InvoiceRepository
+    /**
+     * @param list<Invoice> $saved
+     */
+    private function countingRepository(array &$saved = []): InvoiceRepository
     {
         $repository = $this->createMock(InvoiceRepository::class);
-        $repository->method('updateAmounts')->willReturnCallback(
-            static function (iterable $invoices): int {
-                $updated = 0;
+        $repository->method('saveAll')->willReturnCallback(
+            static function (iterable $invoices) use (&$saved): int {
+                $count = 0;
                 foreach ($invoices as $invoice) {
-                    ++$updated;
+                    $saved[] = $invoice;
+                    ++$count;
                 }
 
-                return $updated;
+                return $count;
             },
         );
 
@@ -140,8 +164,7 @@ final class InvoiceImporterTest extends TestCase
     private function invoice(string $customerName): InvoiceData
     {
         return new InvoiceData(
-            amount: 100.0,
-            currency: 'EUR',
+            amount: new Money(10000, Currency::EUR),
             customerName: $customerName,
             date: new \DateTimeImmutable('2025-02-03'),
         );

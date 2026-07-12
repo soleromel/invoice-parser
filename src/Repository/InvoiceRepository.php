@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Dto\InvoiceData;
 use App\Entity\Invoice;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -17,23 +16,23 @@ class InvoiceRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param iterable<InvoiceData> $invoices
+     * @param iterable<Invoice> $invoices
      */
-    public function updateAmounts(iterable $invoices): int
+    public function saveAll(iterable $invoices): int
     {
-        $connection = $this->getEntityManager()->getConnection();
+        $entityManager = $this->getEntityManager();
 
-        return $connection->transactional(function () use ($connection, $invoices): int {
-            $updated = 0;
+        try {
+            $savedCount = 0;
             foreach ($invoices as $invoice) {
-                $connection->executeStatement(
-                    'UPDATE invoice SET amount = :amount WHERE name = :name',
-                    ['amount' => $invoice->amount, 'name' => $invoice->customerName],
-                );
-                ++$updated;
+                $entityManager->persist($invoice);
+                ++$savedCount;
             }
+            $entityManager->flush();
 
-            return $updated;
-        });
+            return $savedCount;
+        } finally {
+            $entityManager->clear();
+        }
     }
 }

@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 namespace App\Exception;
 
-class InvoiceImportException extends \RuntimeException
+final class InvoiceImportException extends \RuntimeException
 {
 }

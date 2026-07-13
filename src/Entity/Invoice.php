@@ -4,20 +4,42 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Repository\InvoiceRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: 'App\Repository\InvoiceRepository')]
+#[ORM\Entity(repositoryClass: InvoiceRepository::class)]
 class Invoice
 {
-    #[ORM\Id, ORM\GeneratedValue, ORM\Column(type: 'integer')]
-    public int $id;
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    private ?int $id = null;
 
-    #[ORM\Column(type: 'string')]
-    public string $name;
+    public function __construct(
+        #[ORM\Column]
+        private string $name,
+        #[ORM\Embedded]
+        private Money $amount,
+        #[ORM\Column(type: 'date_immutable')]
+        private \DateTimeImmutable $date,
+    ) {
+    }
 
-    #[ORM\Column(type: 'float')]
-    public float $amount;
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
 
-    #[ORM\Column(type: 'string')]
-    public string $currency;
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getAmount(): Money
+    {
+        return $this->amount;
+    }
+
+    public function getDate(): \DateTimeImmutable
+    {
+        return $this->date;
+    }
 }

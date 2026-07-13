@@ -1,7 +1,8 @@
-
 # Invoice Parser
 
-Ce projet est une application Symfony qui permet de parser des fichiers de type JSON et CSV contenant des informations sur des factures. Les données extraites sont ensuite mises à jour dans la base de données via des requêtes SQL.
+Application Symfony qui importe des fichiers de lignes de factures (JSON, CSV) en base de
+données. Chaque format de fichier est géré par un parser dédié ; les montants sont stockés
+en unités mineures entières (centimes) avec leur devise.
 
 ## Prérequis
 
@@ -10,55 +11,54 @@ Ce projet est une application Symfony qui permet de parser des fichiers de type 
 
 ## Installation
 
-1. Clone le projet dans ton répertoire local.
+1. Cloner le projet et lancer les containers.
 
    ```bash
-   git clone https://github.com/ton-repository/invoice-parser.git
-   cd invoice-parser
+   docker compose up -d --build
    ```
 
-2. Construis et lance les containers Docker.
+2. Installer les dépendances PHP.
 
    ```bash
-   docker-compose up --build -d 
+   docker compose exec app composer install
    ```
 
-   Cela créera les containers pour l'application Symfony et la base de données PostgreSQL.
-
-3. Installe les dépendances PHP via Composer.
+3. Créer le schéma de la base.
 
    ```bash
-   docker-compose exec app composer install
+   docker compose exec app php bin/console doctrine:migrations:migrate --no-interaction
    ```
 
-4. Créer la base de données et exécute les migrations.
+4. Créer la base de test (utilisée par les tests fonctionnels).
 
    ```bash
-   docker-compose exec app php bin/console doctrine:migrations:migrate
+   docker compose exec app php bin/console doctrine:database:create --env=test --if-not-exists
+   docker compose exec app php bin/console doctrine:migrations:migrate --env=test --no-interaction
    ```
 
-## Lancer l'application
+## Utilisation
 
-### 1. Exécuter la commande de parsing
+Importer les fichiers du dossier `data/` (par défaut) :
 
-Pour parser les fichiers de factures (`json` ou `csv`), exécute la commande suivante :
+```bash
+docker compose exec app php bin/console app:parse
+```
 
-   ```bash
-  docker-compose run --rm app php bin/console app:parse
-   ```
+Importer un fichier ou un dossier précis :
 
-Cette commande va charger et parser les fichiers, puis mettre à jour les enregistrements dans la base de données.
+```bash
+docker compose exec app php bin/console app:parse chemin/vers/fichier.csv
+```
 
-### 2. Lancer les tests unitaires
+La commande affiche le résultat fichier par fichier (✓/✗ avec le détail de l'erreur) et
+sort en code d'échec dès qu'un fichier n'a pas pu être importé.
 
-Pour vérifier le bon fonctionnement de l'application, tu peux exécuter les tests unitaires via PHPUnit. Pour cela, utilise la commande suivante :
+## Tests
 
-   ```bash
-  docker-compose exec app php vendor/bin/phpunit tests/InvoiceParserTest.php
-   ```
+```bash
+docker compose exec app php vendor/bin/phpunit
+```
 
-Pour exécuter tous les tests dans le projet, tu peux utiliser :
-
-   ```bash
-  docker-compose exec app php vendor/bin/phpunit
-   ```
+La suite comprend des tests unitaires (parsers, value object `Money`, importer) et des
+tests fonctionnels qui exécutent la commande complète contre la base de test — chaque test
+tourne dans une transaction rollbackée, la base ressort vierge.

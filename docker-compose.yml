@@ -1,7 +1,6 @@
 services:
   app:
     build: .
-    image: php:8.2-fpm
     container_name: symfony_app
     volumes:
       - .:/var/www/html

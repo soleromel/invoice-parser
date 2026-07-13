@@ -14,3 +14,8 @@ doctrine:
         dir: '%kernel.project_dir%/src/Entity'
         prefix: 'App\Entity'
         is_bundle: false
+
+when@test:
+  doctrine:
+    dbal:
+      use_savepoints: true

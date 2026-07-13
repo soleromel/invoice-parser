@@ -28,7 +28,7 @@ final class CsvInvoiceParserTest extends TestCase
 
     public function testParseExtractsInvoices(): void
     {
-        $invoices = iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/invoices.csv'), false);
+        $invoices = iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/csv/invoices.csv'), false);
 
         self::assertCount(2, $invoices);
         self::assertSame(67043, $invoices[0]->amount->minorUnits);
@@ -43,12 +43,12 @@ final class CsvInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Unknown currency "XXX" at line 1/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/unknown-currency.csv'), false);
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/csv/unknown-currency.csv'), false);
     }
 
     public function testParseYieldsNothingForEmptyFile(): void
     {
-        $invoices = iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/empty.csv'), false);
+        $invoices = iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/csv/empty.csv'), false);
 
         self::assertSame([], $invoices);
     }
@@ -58,7 +58,7 @@ final class CsvInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Invalid amount "not-a-number" at line 1/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/bad-amount.csv'), false);
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/csv/bad-amount.csv'), false);
     }
 
     public function testParseRejectsWrongDelimiter(): void
@@ -66,7 +66,7 @@ final class CsvInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Expected 4 columns at line 1 .* got 1/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/semicolon.csv'), false);
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/csv/semicolon.csv'), false);
     }
 
     public function testParseRejectsTooManyColumns(): void
@@ -74,7 +74,7 @@ final class CsvInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Expected 4 columns at line 1 .* got 5/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/too-many-columns.csv'), false);
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/csv/too-many-columns.csv'), false);
     }
 
     public function testParseRejectsImpossibleDate(): void
@@ -82,7 +82,7 @@ final class CsvInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Invalid date "2025-02-30" at line 1/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/bad-date.csv'), false);
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/csv/bad-date.csv'), false);
     }
 
     public function testParseRejectsUnreadableFile(): void

@@ -28,7 +28,7 @@ final class JsonInvoiceParserTest extends TestCase
 
     public function testParseExtractsInvoices(): void
     {
-        $invoices = iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/invoices.json'));
+        $invoices = iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/json/invoices.json'));
 
         self::assertCount(2, $invoices);
         self::assertSame(67043, $invoices[0]->amount->minorUnits);
@@ -43,7 +43,7 @@ final class JsonInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Unknown currency "XXX" at index 0/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/unknown-currency.json'));
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/json/unknown-currency.json'));
     }
 
     public function testParseRejectsInvalidJson(): void
@@ -51,7 +51,7 @@ final class JsonInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Invalid JSON/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/invalid.json'));
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/json/invalid.json'));
     }
 
     public function testParseRejectsMissingKey(): void
@@ -59,7 +59,7 @@ final class JsonInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Missing key "nom" at index 0/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/missing-key.json'));
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/json/missing-key.json'));
     }
 
     public function testParseRejectsImpossibleDate(): void
@@ -67,7 +67,7 @@ final class JsonInvoiceParserTest extends TestCase
         $this->expectException(InvoiceImportException::class);
         $this->expectExceptionMessageMatches('/Invalid date "2025-02-30" at index 0/');
 
-        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/bad-date.json'));
+        iterator_to_array($this->parser->parse(__DIR__.'/../fixtures/json/bad-date.json'));
     }
 
     public function testParseRejectsUnreadableFile(): void

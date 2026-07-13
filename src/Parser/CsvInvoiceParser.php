@@ -12,11 +12,14 @@ use App\Exception\InvoiceImportException;
 final class CsvInvoiceParser implements InvoiceFileParserInterface
 {
     private const DELIMITER = "\t";
-    private const COLUMNS = 4;
+    private const EXPECTED_COLUMN_COUNT = 4;
+    private const DATE_FORMAT = 'Y-m-d';
 
     public function supports(string $filePath): bool
     {
-        return 'csv' === strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        return 'csv' === $extension;
     }
 
     public function parse(string $filePath): iterable
@@ -29,43 +32,47 @@ final class CsvInvoiceParser implements InvoiceFileParserInterface
         $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE);
         $file->setCsvControl(self::DELIMITER);
 
-        foreach ($file as $line => $row) {
-            if ([null] === $row || false === $row) {
+        foreach ($file as $lineIndex => $row) {
+            $isBlankLine = [null] === $row || false === $row;
+            if ($isBlankLine) {
                 continue;
             }
 
-            yield $this->mapRow($row, $line + 1, $filePath);
+            $lineNumber = $lineIndex + 1;
+
+            yield $this->mapRow($row, $lineNumber, $filePath);
         }
     }
 
-    private function mapRow(array $row, int $line, string $filePath): InvoiceData
+    private function mapRow(array $row, int $lineNumber, string $filePath): InvoiceData
     {
-        if (self::COLUMNS !== count($row)) {
-            throw new InvoiceImportException(sprintf('Expected %d columns at line %d in "%s", got %d.', self::COLUMNS, $line, $filePath, count($row)));
+        if (self::EXPECTED_COLUMN_COUNT !== count($row)) {
+            throw new InvoiceImportException(sprintf('Expected %d columns at line %d in "%s", got %d.', self::EXPECTED_COLUMN_COUNT, $lineNumber, $filePath, count($row)));
         }
 
-        [$amount, $currency, $customerName, $date] = $row;
+        [$rawAmount, $rawCurrency, $customerName, $rawDate] = $row;
 
-        $parsedCurrency = Currency::tryFrom((string) $currency);
-        if (null === $parsedCurrency) {
-            throw new InvoiceImportException(sprintf('Unknown currency "%s" at line %d in "%s".', $currency, $line, $filePath));
+        $currency = Currency::tryFrom((string) $rawCurrency);
+        if (null === $currency) {
+            throw new InvoiceImportException(sprintf('Unknown currency "%s" at line %d in "%s".', $rawCurrency, $lineNumber, $filePath));
         }
 
         try {
-            $parsedAmount = Money::fromDecimalString((string) $amount, $parsedCurrency);
+            $amount = Money::fromDecimalString((string) $rawAmount, $currency);
         } catch (\InvalidArgumentException $e) {
-            throw new InvoiceImportException(sprintf('Invalid amount "%s" at line %d in "%s": %s', $amount, $line, $filePath, $e->getMessage()), previous: $e);
+            throw new InvoiceImportException(sprintf('Invalid amount "%s" at line %d in "%s": %s', $rawAmount, $lineNumber, $filePath, $e->getMessage()), previous: $e);
         }
 
-        $parsedDate = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $date);
-        if (false === $parsedDate || $parsedDate->format('Y-m-d') !== $date) {
-            throw new InvoiceImportException(sprintf('Invalid date "%s" at line %d in "%s".', $date, $line, $filePath));
+        $date = \DateTimeImmutable::createFromFormat(self::DATE_FORMAT, (string) $rawDate);
+        $isRealCalendarDate = false !== $date && $date->format(self::DATE_FORMAT) === $rawDate;
+        if (!$isRealCalendarDate) {
+            throw new InvoiceImportException(sprintf('Invalid date "%s" at line %d in "%s".', $rawDate, $lineNumber, $filePath));
         }
 
         return new InvoiceData(
-            amount: $parsedAmount,
+            amount: $amount,
             customerName: (string) $customerName,
-            date: $parsedDate,
+            date: $date,
         );
     }
 }

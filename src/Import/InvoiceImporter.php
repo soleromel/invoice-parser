@@ -43,13 +43,16 @@ final class InvoiceImporter
             return new FileImportResult($filePath, 0, sprintf('No parser supports "%s".', $filePath));
         }
 
+        $rowStream = $parser->parse($filePath);
+        $invoiceStream = $this->mapToEntities($rowStream);
+
         try {
-            $imported = $this->repository->saveAll($this->mapToEntities($parser->parse($filePath)));
+            $importedCount = $this->repository->saveAll($invoiceStream);
         } catch (InvoiceImportException $e) {
             return new FileImportResult($filePath, 0, $e->getMessage());
         }
 
-        return new FileImportResult($filePath, $imported);
+        return new FileImportResult($filePath, $importedCount);
     }
 
     /**

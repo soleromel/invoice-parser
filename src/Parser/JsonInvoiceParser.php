@@ -11,9 +11,14 @@ use App\Exception\InvoiceImportException;
 
 final class JsonInvoiceParser implements InvoiceFileParserInterface
 {
+    private const REQUIRED_KEYS = ['montant', 'devise', 'nom', 'date'];
+    private const DATE_FORMAT = 'Y-m-d';
+
     public function supports(string $filePath): bool
     {
-        return 'json' === strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        return 'json' === $extension;
     }
 
     public function parse(string $filePath): iterable
@@ -44,9 +49,9 @@ final class JsonInvoiceParser implements InvoiceFileParserInterface
             throw new InvoiceImportException(sprintf('Invalid invoice at index %s in "%s".', $index, $filePath));
         }
 
-        foreach (['montant', 'devise', 'nom', 'date'] as $key) {
-            if (!isset($row[$key])) {
-                throw new InvoiceImportException(sprintf('Missing key "%s" at index %s in "%s".', $key, $index, $filePath));
+        foreach (self::REQUIRED_KEYS as $requiredKey) {
+            if (!isset($row[$requiredKey])) {
+                throw new InvoiceImportException(sprintf('Missing key "%s" at index %s in "%s".', $requiredKey, $index, $filePath));
             }
         }
 
@@ -61,8 +66,9 @@ final class JsonInvoiceParser implements InvoiceFileParserInterface
             throw new InvoiceImportException(sprintf('Invalid amount "%s" at index %s in "%s": %s', $row['montant'], $index, $filePath, $e->getMessage()), previous: $e);
         }
 
-        $date = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $row['date']);
-        if (false === $date || $date->format('Y-m-d') !== $row['date']) {
+        $date = \DateTimeImmutable::createFromFormat(self::DATE_FORMAT, (string) $row['date']);
+        $isRealCalendarDate = false !== $date && $date->format(self::DATE_FORMAT) === $row['date'];
+        if (!$isRealCalendarDate) {
             throw new InvoiceImportException(sprintf('Invalid date "%s" at index %s in "%s".', $row['date'], $index, $filePath));
         }
 

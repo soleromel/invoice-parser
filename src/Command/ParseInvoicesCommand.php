@@ -42,10 +42,7 @@ final class ParseInvoicesCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $path = $input->getArgument('path');
-        if (!str_starts_with($path, '/')) {
-            $path = $this->projectDir.'/'.$path;
-        }
+        $path = $this->resolveAgainstProjectDir($input->getArgument('path'));
 
         if (!file_exists($path)) {
             $io->error(sprintf('Path "%s" does not exist.', $path));
@@ -53,11 +50,7 @@ final class ParseInvoicesCommand extends Command
             return Command::FAILURE;
         }
 
-        $files = [$path];
-        if (is_dir($path)) {
-            $files = glob(rtrim($path, '/').'/*') ?: [];
-        }
-
+        $files = $this->resolveFiles($path);
         if ([] === $files) {
             $io->warning(sprintf('No file found in "%s".', $path));
 
@@ -66,14 +59,14 @@ final class ParseInvoicesCommand extends Command
 
         $result = $this->importer->import($files);
 
-        foreach ($result->files as $file) {
-            if ($file->isFailure()) {
-                $io->writeln(sprintf('<error>✗</error> %s — %s', $file->filePath, $file->error));
+        foreach ($result->files as $fileResult) {
+            if ($fileResult->isFailure()) {
+                $io->writeln(sprintf('<error>✗</error> %s — %s', $fileResult->filePath, $fileResult->error));
 
                 continue;
             }
 
-            $io->writeln(sprintf('<info>✓</info> %s — %d invoice(s) imported', $file->filePath, $file->importedCount));
+            $io->writeln(sprintf('<info>✓</info> %s — %d invoice(s) imported', $fileResult->filePath, $fileResult->importedCount));
         }
 
         if ($result->hasFailures()) {
@@ -85,5 +78,27 @@ final class ParseInvoicesCommand extends Command
         $io->success(sprintf('%d invoice(s) imported from %d file(s).', $result->totalImported(), count($files)));
 
         return Command::SUCCESS;
+    }
+
+    private function resolveAgainstProjectDir(string $path): string
+    {
+        $isAbsolutePath = str_starts_with($path, '/');
+        if ($isAbsolutePath) {
+            return $path;
+        }
+
+        return $this->projectDir.'/'.$path;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveFiles(string $path): array
+    {
+        if (is_dir($path)) {
+            return glob(rtrim($path, '/').'/*') ?: [];
+        }
+
+        return [$path];
     }
 }
